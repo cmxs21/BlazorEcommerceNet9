@@ -6,6 +6,7 @@ namespace BlazorEcommerce.Data
     public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : IdentityDbContext<ApplicationUser>(options)
     {
         public DbSet<Category> Categories { get; set; }
+        public DbSet<Product> Products { get; set; }
 
         // Sugerencia: Agrega datos iniciales usando el método OnModelCreating
         protected override void OnModelCreating(ModelBuilder modelBuilder)

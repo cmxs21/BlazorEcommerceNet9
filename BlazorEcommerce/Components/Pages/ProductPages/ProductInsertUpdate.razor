@@ -1,0 +1,179 @@
+﻿@page "/product/create"
+@page "/product/update/{id:int}"
+@inject IProductRepository _productRepository
+@inject ICategoryRepository _categoryRepository
+@inject NavigationManager _navigationManager
+@inject IJSRuntime _JS
+
+@if (IsProcessing)
+{
+    <div class="position-absolute w-75 h-75 d-flex flex-column align-items-center bg-white justify-content-center">
+        <img src="/images/loading.gif" alt="loading" />
+    </div>
+}
+else
+{
+    <div class="card shadow border-0 mt-4">
+        <div class="card-header bg-black bg-gradient ml-0 py-3">
+            <div class="row">
+                <div class="col-12 text-center">
+                    <h4 class="text-white py-2">@(Id > 0 ? "Update" : "Create") Product</h4>
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-4">
+            <div class="row pb-3">
+                <div class="col-12 text-end">
+                    &nbsp;
+                </div>
+            </div>
+            <EditForm Model="editModel" OnValidSubmit="HandleSubmitAsync" class="row g-3">
+                <DataAnnotationsValidator />
+
+                <div class="col-md-6">
+                    <label for="name" class="form-label">Name</label>
+                    <InputText id="name" class="form-control" @bind-Value="editModel.Name" />
+                    <ValidationMessage For="@(() => editModel.Name)" />
+                </div>
+
+                <div class="col-md-6">
+                    <label for="price" class="form-label">Price</label>
+                    <InputNumber id="price" class="form-control" @bind-Value="editModel.Price" step="0.01" />
+                    <ValidationMessage For="@(() => editModel.Price)" />
+                </div>
+
+                <div class="col-md-12">
+                    <label for="description" class="form-label">Description</label>
+                    <InputTextArea id="description" class="form-control" @bind-Value="editModel.Description" />
+                    <ValidationMessage For="@(() => editModel.Description)" />
+                </div>
+
+                <div class="col-md-6">
+                    <label for="specialTag" class="form-label">Special Tag</label>
+                    <InputText id="specialTag" class="form-control" @bind-Value="editModel.SpecialTag" />
+                    <ValidationMessage For="@(() => editModel.SpecialTag)" />
+                </div>
+
+                <div class="col-md-6">
+                    <label for="imageUrl" class="form-label">Image URL</label>
+                    <InputText id="imageUrl" class="form-control" @bind-Value="editModel.ImageUrl" />
+                    <ValidationMessage For="@(() => editModel.ImageUrl)" />
+                </div>
+
+                <div class="col-md-6">
+                    <label for="categoryId" class="form-label">Category</label>
+                    <InputSelect id="categoryId" class="form-control" @bind-Value="editModel.CategoryId">
+                        <option value="">-- Select Category --</option>
+                        @foreach (var category in Categories)
+                        {
+                            <option value="@category.Id">@category.Name</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(() => editModel.CategoryId)" />
+                </div>
+
+                <div class="row mt-3">
+                    <div class="col-6 col-md-3">
+                        <button type="submit" class="btn btn-primary form-control" style="width:250px;" disabled="@IsProcessing">
+                            <i class="bi bi-floppy2-fill"></i> @(Id > 0 ? "Update" : "Create") Product
+                        </button>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <NavLink href="product" class="btn btn-secondary form-control" style="width:250px;">Cancel</NavLink>
+                    </div>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    private bool IsProcessing { get; set; } = true;
+
+    [Parameter]
+    public int? Id { get; set; }
+
+    private Product Product { get; set; } = new();
+    private Product editModel { get; set; } = new();
+
+    // Lista de categorías para el selector
+    private List<Category> Categories { get; set; } = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadCategories();
+            await LoadProduct();
+            IsProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadCategories()
+    {
+        Categories = (await _categoryRepository.GetAllAsync()).ToList();
+    }
+
+    private async Task LoadProduct()
+    {
+        if (Id.HasValue && Id > 0)
+        {
+            var product = await _productRepository.GetAsync(Id.Value);
+            if (product != null)
+            {
+                Product = product;
+                editModel = new Product
+                {
+                    Id = Product.Id,
+                    Name = Product.Name,
+                    Price = Product.Price,
+                    Description = Product.Description,
+                    SpecialTag = Product.SpecialTag,
+                    ImageUrl = Product.ImageUrl,
+                    CategoryId = Product.CategoryId
+                };
+            }
+        }
+        else
+        {
+            Product = new Product();
+            editModel = new Product();
+        }
+    }
+
+    private async Task HandleSubmitAsync()
+    {
+        IsProcessing = true;
+
+        Product.Name = editModel.Name;
+        Product.Price = editModel.Price;
+        Product.Description = editModel.Description;
+        Product.SpecialTag = editModel.SpecialTag;
+        Product.ImageUrl = editModel.ImageUrl;
+        Product.CategoryId = editModel.CategoryId;
+
+        // if (editModel.CategoryId > 0 )
+        // {
+            if (Id.HasValue && Id > 0)
+            {
+                await _productRepository.UpdateAsync(Product);
+                await _JS.ToastrSuccess("Product updated successfully.");
+            }
+            else
+            {
+                await _productRepository.CreateAsync(Product);
+                await _JS.ToastrSuccess("Product created successfully.");
+            }
+        // }
+        // else 
+        // {
+        //     await _JS.ToastrError("Please select a valid category.");
+        //     IsProcessing = false;
+        //     return;
+        // }
+
+        IsProcessing = false;
+        _navigationManager.NavigateTo("product");
+    }
+}
