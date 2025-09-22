@@ -1,0 +1,119 @@
+﻿@page "/category/create"
+@page "/category/update/{id:int}"
+@inject ICategoryRepository _categoryRepository
+@inject NavigationManager _navigationManager
+@inject IJSRuntime _JS
+
+@if (IsProcessing)
+{
+    <div class="position-absolute w-75 h-75 d-flex flex-column align-items-center bg-white justify-content-center">
+        <img src="/images/loading.gif" alt="loading" />
+    </div>
+}
+else
+{
+    <div class="card shadow border-0 mt-4">
+        <div class="card-header bg-black bg-gradient ml-0 py-3">
+            <div class="row">
+                <div class="col-12 text-center">
+                    <h4 class="text-white py-2">@(Id > 0 ? "Update" : "Create") Category</h4>
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-4">
+            <div class="row pb-3">
+                <div class="col-12 text-end">
+                    &nbsp;
+                </div>
+            </div>
+            <!-- Importante: aquí usamos editModel en vez de Category -->
+            <EditForm Model="editModel" OnValidSubmit="HandleSubmitAsync" class="row g-3">
+                <DataAnnotationsValidator />
+                <div class="col-md-6">
+                    <label for="name" class="form-label">Name</label>
+                    <InputText id="name" class="form-control" @bind-Value="editModel.Name" />
+                    <ValidationMessage For="@(() => editModel.Name)" />
+                </div>
+                <div class="row mt-3">
+                    <div class="col-6 col-md-3">
+                        <button type="submit" class="btn btn-primary form-control" style="width:250px;" disabled="@IsProcessing">
+                            <i class="bi bi-floppy2-fill"></i> @(Id > 0 ? "Update" : "Create") Category
+                        </button>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <NavLink href="category" class="btn btn-secondary form-control" style="width:250px;">Cancel</NavLink>
+                    </div>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    private bool IsProcessing { get; set; } = true;
+
+    [Parameter]
+    public int? Id { get; set; }
+
+    // Entidad real que viene de la BD
+    private Category Category { get; set; } = new();
+
+    // Copia temporal para el form
+    private Category editModel { get; set; } = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadCategory();
+            IsProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadCategory()
+    {
+        if (Id.HasValue && Id > 0)
+        {
+            var category = await _categoryRepository.GetAsync(Id.Value);
+            if (category != null)
+            {
+                Category = category;
+
+                // Copiamos valores a editModel para edición segura
+                editModel = new Category
+                {
+                    Id = Category.Id,
+                    Name = Category.Name
+                };
+            }
+        }
+        else
+        {
+            Category = new Category();
+            editModel = new Category();
+        }
+    }
+
+    private async Task HandleSubmitAsync()
+    {
+        IsProcessing = true;
+
+        // Mapear valores de la copia al original
+        Category.Name = editModel.Name;
+
+        if (Id.HasValue && Id > 0)
+        {
+            await _categoryRepository.UpdateAsync(Category);
+            await _JS.ToastrSuccess("Category updated successfully.");
+        }
+        else
+        {
+            await _categoryRepository.CreateAsync(Category);
+            await _JS.ToastrSuccess("Category created successfully.");
+        }
+
+        IsProcessing = false;
+        _navigationManager.NavigateTo("category");
+    }
+}
