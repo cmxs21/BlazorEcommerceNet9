@@ -1,0 +1,46 @@
+﻿<!-- Button trigger modal -->
+<!--button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#ModalGeneralConfirm">
+    Launch demo modal
+</button-->
+
+<!-- Modal -->
+<div class="modal fade" id="ModalGeneralConfirm" tabindex="-1" aria-labelledby="ModalGeneralConfirmLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="ModalGeneralConfirmLabel">@Title</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>@Body</p>
+                <button type="button" class="btn btn-lg btn-secondary" data-bs-dismiss="modal" @onclick="() => HandleModalConfirm(false)" style="width:150px;">Cancel</button>
+                <button type="button" class="btn btn-lg @ButtonBootstrapStyle" @onclick="() => HandleModalConfirm(true)" style="width:150px;">@ConfirmButtonText</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public EventCallback<bool> OnModalConfirmation { get; set; }
+
+    [Parameter]
+    public string Title { get; set; } = "Please Confirm";
+
+    [Parameter]
+    public string Body { get; set; } = "Are you sure you want to proceed?";
+
+    [Parameter]
+    public string ButtonBootstrapStyle { get; set; } = "btn-primary";
+
+    [Parameter]
+    public string ConfirmButtonText { get; set; } = "Confirm";
+
+    private async Task HandleModalConfirm(bool confirmed)
+    {
+        if (confirmed)
+        {
+            await OnModalConfirmation.InvokeAsync(confirmed);
+        }
+    }
+}

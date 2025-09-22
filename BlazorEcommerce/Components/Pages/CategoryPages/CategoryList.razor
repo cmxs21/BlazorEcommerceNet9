@@ -1,5 +1,12 @@
 ﻿@page "/category"
 @inject ICategoryRepository _categoryRepository
+@inject IJSRuntime _JS
+
+<BsModal OnModalConfirmation="ConfirmedDelete"
+    ButtonBootstrapStyle="btn-danger" 
+    ConfirmButtonText="Delete" 
+    Title="Please Confirm"
+    Body="Are you sure you want to delete this category?"></BsModal>
 
 @if (IsProcessing)
 {
@@ -43,7 +50,7 @@ else
                                     <NavLink class="btn btn-sm btn-primary me-2" href=@($"category/update/{category.Id}")>
                                         <i class="bi bi-pencil-square"></i> Edit
                                     </NavLink>
-                                    <NavLink class="btn btn-sm btn-danger"><i class="bi bi-trash3"></i> Delete</NavLink>
+                                    <NavLink class="btn btn-sm btn-danger" @onclick="() => HandleDelete(category.Id)"><i class="bi bi-trash3"></i> Delete</NavLink>
                                 </td>
                             </tr>
                         }
@@ -63,6 +70,7 @@ else
 @code {
     private bool IsProcessing { get; set; } = true;
     private IEnumerable<Category> Categories { get; set; } = new List<Category>();
+    private int DeleteCategoryId { get; set; } = 0;
 
     //This method for loading data is not recommended because it can cause performance issues because of double rendering.
     // protected override async Task OnInitializedAsync()
@@ -86,5 +94,34 @@ else
     private async Task LoadCategories()
     {
         Categories = await _categoryRepository.GetAllAsync();
+    }
+
+    private void HandleDelete(int id)
+    {
+        DeleteCategoryId = id;
+        _JS.InvokeVoidAsync("ModalConfirmationShow");
+    }
+
+    private async Task ConfirmedDelete(bool isConfirmed)
+    {
+        IsProcessing = true;
+        
+        if (isConfirmed && DeleteCategoryId > 0)
+        {
+            var result = await _categoryRepository.DeleteAsync(DeleteCategoryId);
+            if (result)
+            {
+                await LoadCategories();
+                await _JS.ToastrSuccess("Category deleted successfully.");
+                StateHasChanged();
+            }
+            else
+            {
+                await _JS.ToastrError("Error deleting category.");
+            }
+            await _JS.InvokeVoidAsync("ModalConfirmationHide");
+        }
+        DeleteCategoryId = 0;
+        IsProcessing = false;
     }
 }
