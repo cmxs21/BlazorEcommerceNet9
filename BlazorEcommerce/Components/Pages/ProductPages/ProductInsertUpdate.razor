@@ -54,11 +54,6 @@ else
                     <ValidationMessage For="@(() => editModel.SpecialTag)" />
                 </div>
 
-                <div class="col-md-6">
-                    <label for="imageUrl" class="form-label">Image URL</label>
-                    <InputText id="imageUrl" class="form-control" @bind-Value="editModel.ImageUrl" />
-                    <ValidationMessage For="@(() => editModel.ImageUrl)" />
-                </div>
 
                 <div class="col-md-6">
                     <label for="categoryId" class="form-label">Category</label>
@@ -72,6 +67,31 @@ else
                     <ValidationMessage For="@(() => editModel.CategoryId)" />
                 </div>
 
+                <div class="col-md-6">
+                    <label for="imageUrl" class="form-label">Image</label>
+                    @if (string.IsNullOrEmpty(editModel.ImageUrl))
+                    {
+                        <InputFile id="imageUrl" OnChange="HandleImageSelected" class="form-control" accept="image/*" />
+                    }
+                    @if (!string.IsNullOrEmpty(ImageError))
+                    {
+                        <div class="text-danger">@ImageError</div>
+                    }
+                    @if (!string.IsNullOrEmpty(editModel.ImageUrl))
+                    {
+                        <div class="row pt-3">
+                            <div class="col-3">
+                                <img src="@($"/images/product/{editModel.ImageUrl}")" alt="Preview" style="max-width:200px;" />
+                            </div>
+                            <div class="col-md-9">
+                                <button type="button" class="btn btn-outline-danger" @onclick="DeleteImage">
+                                    <i class="bi bi-trash btn btn-outline-danger"></i> Remove Image
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </div>
+
                 <div class="row mt-3">
                     <div class="col-6 col-md-3">
                         <button type="submit" class="btn btn-primary form-control" style="width:250px;" disabled="@IsProcessing">
@@ -79,7 +99,11 @@ else
                         </button>
                     </div>
                     <div class="col-6 col-md-3">
-                        <NavLink href="product" class="btn btn-secondary form-control" style="width:250px;">Cancel</NavLink>
+                        <button type="button" class="btn btn-secondary form-control" style="width:250px;"
+                                @onclick="HandleCancel">
+                            Cancel
+                        </button>
+
                     </div>
                 </div>
             </EditForm>
@@ -95,6 +119,11 @@ else
 
     private Product Product { get; set; } = new();
     private Product editModel { get; set; } = new();
+
+    //Params for image upload
+    [Inject] private IWebHostEnvironment _env { get; set; } = default!;
+    private IBrowserFile? SelectedImageFile { get; set; }
+    private string? ImageError { get; set; }
 
     // Lista de categorías para el selector
     private List<Category> Categories { get; set; } = new();
@@ -155,16 +184,16 @@ else
 
         // if (editModel.CategoryId > 0 )
         // {
-            if (Id.HasValue && Id > 0)
-            {
-                await _productRepository.UpdateAsync(Product);
-                await _JS.ToastrSuccess("Product updated successfully.");
-            }
-            else
-            {
-                await _productRepository.CreateAsync(Product);
-                await _JS.ToastrSuccess("Product created successfully.");
-            }
+        if (Id.HasValue && Id > 0)
+        {
+            await _productRepository.UpdateAsync(Product);
+            await _JS.ToastrSuccess("Product updated successfully.");
+        }
+        else
+        {
+            await _productRepository.CreateAsync(Product);
+            await _JS.ToastrSuccess("Product created successfully.");
+        }
         // }
         // else 
         // {
@@ -176,4 +205,79 @@ else
         IsProcessing = false;
         _navigationManager.NavigateTo("product");
     }
+
+    private async Task HandleImageSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+
+        // Validar tipo MIME
+        if (!file.ContentType.StartsWith("image/"))
+        {
+            ImageError = "Please select a valid image file (JPG, PNG, etc.).";
+            SelectedImageFile = null;
+            return;
+        }
+
+        // Generar nombre seguro único
+        var extension = Path.GetExtension(file.Name);
+        var safeFileName = $"{Guid.NewGuid()}{extension}";
+
+        // Ruta destino dentro de wwwroot/images/product
+        var folderPath = Path.Combine(_env.WebRootPath, "images", "product");
+        if (!Directory.Exists(folderPath))
+        {
+            Directory.CreateDirectory(folderPath);
+        }
+
+        var filePath = Path.Combine(folderPath, safeFileName);
+
+        // Guardar archivo en disco
+        using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024); // 5 MB
+        using var fileStream = new FileStream(filePath, FileMode.Create);
+        await stream.CopyToAsync(fileStream);
+
+        // Asignar solo el nombre a la BD
+        editModel.ImageUrl = safeFileName;
+
+        ImageError = null;
+    }
+
+    private async Task DeleteImage()
+    {
+        if (!string.IsNullOrEmpty(editModel.ImageUrl))
+        {
+            // Ruta física del archivo en wwwroot/images/product
+            var filePath = Path.Combine(_env.WebRootPath, "images", "product", editModel.ImageUrl);
+
+            if (System.IO.File.Exists(filePath))
+            {
+                System.IO.File.Delete(filePath);
+            }
+
+            // Quitar referencia en el modelo
+            editModel.ImageUrl = null;
+
+            // Feedback al usuario
+            await _JS.ToastrSuccess("Image removed successfully.");
+
+            StateHasChanged();
+        }
+        else
+        {
+            await _JS.ToastrError("No image to remove.");
+        }
+    }
+
+    private async Task HandleCancel()
+    {
+        // Si es producto nuevo y había subido imagen, la eliminamos
+        if ((editModel.Id == 0 || editModel.Id == null) && !string.IsNullOrEmpty(editModel.ImageUrl))
+        {
+            await DeleteImage();
+        }
+
+        // Redirigir al listado
+        _navigationManager.NavigateTo("product");
+    }
+
 }
