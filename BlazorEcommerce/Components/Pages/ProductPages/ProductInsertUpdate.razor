@@ -13,7 +13,7 @@
 }
 else
 {
-    <div class="card shadow border-0 mt-4">
+    <div class="card shadow border-0 m-4">
         <div class="card-header bg-black bg-gradient ml-0 py-3">
             <div class="row">
                 <div class="col-12 text-center">
@@ -57,7 +57,7 @@ else
 
                 <div class="col-md-6">
                     <label for="categoryId" class="form-label">Category</label>
-                    <InputSelect id="categoryId" class="form-control" @bind-Value="editModel.CategoryId">
+                    <InputSelect id="categoryId" class="form-select" @bind-Value="editModel.CategoryId">
                         <option value="">-- Select Category --</option>
                         @foreach (var category in Categories)
                         {
