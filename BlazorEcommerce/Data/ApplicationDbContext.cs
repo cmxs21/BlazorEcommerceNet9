@@ -7,6 +7,7 @@ namespace BlazorEcommerce.Data
     {
         public DbSet<Category> Categories { get; set; }
         public DbSet<Product> Products { get; set; }
+        public DbSet<ShoppingCart> ShoppingCarts { get; set; }
 
         // Sugerencia: Agrega datos iniciales usando el método OnModelCreating
         protected override void OnModelCreating(ModelBuilder modelBuilder)

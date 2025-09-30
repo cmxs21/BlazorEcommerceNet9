@@ -1,6 +1,10 @@
 ﻿@page "/"
+@inject AuthenticationStateProvider _AuthStateProvider //Injected service to get the authentication state of the user
+@inject IJSRuntime _JS //Injected service to interact with JavaScript
+@inject NavigationManager _NavManager //Injected service to manage navigation
 @inject ICategoryRepository _categoryRepository // Injecting the category repository to fetch categories from the database
 @inject IProductRepository _productRepository // Injecting the product repository to fetch products from the database
+@inject IShoppingCartRepository _shoppingCartRepository // Injecting the shopping cart repository to manage shopping cart operations
 
 <PageTitle>Home</PageTitle>
 
@@ -15,9 +19,9 @@ else
     <div class="container-fluid px-0 m-0 full-width">
         <div class="jumbotron-custom">
             <div class="m-auto d-flex align-items-center" style="width: 400px; height: 50vh;">
-
                 <div class="d-flex align-items-center" style="width: 100%;">
                     <input type="text" class="form-control rounded-pill"
+                           @bind:event="oninput" @bind:get="_searchText" @bind:set="FilterProductsByName"
                     placeholder="Search for Food Items!"
                     style="width: 100%; padding: 20px;">
                     <span style="position: relative; left: -43px;"><i class="bi bi-search"></i></span>
@@ -27,25 +31,27 @@ else
 
         <div class="content px-4 m-2">
             <ul class="nav nav-underline justify-content-center mb-2">
+                <li class="nav-item">
+                    <span class="nav-link @GetActiveClass(0)" href="#" style="cursor: pointer" @onclick="() => FilterProducts(0)">All</span>
+                </li>
                 @foreach (var category in Categories) 
                 {
                     <li class="nav-item">
-                        <span class="nav-link" href="#" style="cursor: pointer">@category.Name</span>
+                        <span class="nav-link @GetActiveClass(category.Id)" href="#" style="cursor: pointer" @onclick="() => FilterProducts(category.Id)">
+                            @category.Name
+                        </span>
                     </li>
                 }
                 <!--li class="nav-item">
-                    <span class="nav-link" href="#" style="cursor: pointer">All</span>
-                </li>
-                <li class="nav-item">
                     <span class="nav-link" href="#" style="cursor: pointer">Cat 1</span>
-                </li>
+                </!--li>
                 <li class="nav-item">
                     <span class="nav-link" href="#" style="cursor: pointer">Cat 2</span>
                 </li-->
             </ul>
             <div class="row mt-4 mx-1">
 
-                @foreach (var product in Products)
+                @foreach (var product in FilteredProducts)
                 {
                     <div class="col-12 col-md-6 col-lg-4 pe-3 mb-5">
                         <div class="card">
@@ -74,7 +80,9 @@ else
                                 <h5 class="card-title text-center lead text-success">@product.Name</h5>
                                 <p class="card-text mt-2">@product.Description</p>
                                 <h4 class="text-center">
-                                    <i class="bi bi-cart3 btn btn-success text-right  px-5" style="width:300px"> Add to cart</i>
+                                    <div class="m-lg-auto p-2" @onclick="() => AddOrderItem(product)">
+                                        <i class="bi bi-cart3 btn btn-success text-right  px-5" style="width:300px"> Add to cart</i>
+                                    </div>
                                 </h4>
 
                             </div>
@@ -87,9 +95,12 @@ else
 }
 
 @code {
+    private bool IsProcessing { get; set; } = true;
     private IEnumerable<Category> Categories = new List<Category>();
     private IEnumerable<Product> Products = new List<Product>();
-    private bool IsProcessing { get; set; } = true;
+    private IEnumerable<Product> FilteredProducts = new List<Product>();
+    private int _selectedCategoryId { get; set; } = 0;
+    private string _searchText { get; set; } = string.Empty;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -135,6 +146,67 @@ else
         finally
         {
             IsProcessing = false;
+        }
+        FilterProducts(0);
+    }
+
+    private void FilterProducts(int categoryId)
+    {
+        if (categoryId == 0)
+        {
+            FilteredProducts = Products;
+            _selectedCategoryId = categoryId;
+            return;
+        }
+        else
+        {
+            FilteredProducts = Products.Where(p => p.CategoryId == categoryId).ToList();
+            _selectedCategoryId = categoryId;
+            _searchText = string.Empty;
+        }
+    }
+
+    private void FilterProductsByName(string newValueOfSearchText)
+    {
+        if (string.IsNullOrWhiteSpace(newValueOfSearchText))
+        {
+            FilteredProducts = Products;
+        }
+        else
+        {
+            FilteredProducts = Products.Where(p => p.Name.Contains(newValueOfSearchText, StringComparison.InvariantCultureIgnoreCase)).ToList();
+        }
+        _searchText = newValueOfSearchText;
+    }
+
+    private string GetActiveClass(int categoryId)
+    {
+        return _selectedCategoryId == categoryId ? "active" : string.Empty;
+    }
+
+    private async Task AddOrderItem(Product product)
+    {
+        var authState = await _AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        if (user.Identity is not null && user.Identity.IsAuthenticated)
+        {
+            // User is authenticated, proceed to add the item to the cart
+            var result = await _shoppingCartRepository.UpdateCartAsync(user.FindFirst(u => u.Type.Contains("nameidentifier"))?.Value, product.Id, 1);
+            
+            if (result)
+            {
+                // Optionally, you can update the UI or state here if needed
+                await _JS.ToastrSuccess("Item added to cart successfully!");
+            } 
+            else 
+            {
+                await _JS.ToastrError("Failed to add item to cart. Please try again.");
+            }
+        }
+        else
+        {
+            // User is not authenticated, redirect to login page
+            _NavManager.NavigateTo("Account/Login");
         }
     }
 }
