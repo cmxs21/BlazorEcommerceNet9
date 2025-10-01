@@ -1,87 +1,208 @@
 ﻿@page "/cart"
+@using BlazorEcommerce.Utility
+@using Microsoft.AspNetCore.Authorization
+@using System.Globalization
+@inject AuthenticationStateProvider _AuthStateProvider //Injected service to get the authentication state of the user
+@inject IShoppingCartRepository _shoppingCartRepository // Injecting the shopping cart repository to manage shopping cart operations
+@inject IOrderRepository _orderRepository // Injecting the order repository to manage order operations
+@inject NavigationManager _navigationManager // Injecting NavigationManager to handle navigation
+@attribute [Authorize]
 
-<div class="row w-100">
-	<div class="col-lg-6 col-12">
-		<div class="container p-4 m-2">
-			<h4 class="text-center text-success display-6">
-				Cart Summary
-			</h4>
+<PageTitle>Shopping Cart</PageTitle>
 
+@if (IsProcessing)
+{
+    <div class="position-absolute w-100 vh-100 d-flex flex-column align-items-center bg-white justify-content-center">
+        <img src="/images/loading.gif" alt="loading" />
+    </div>
+}
+else if(!ShoppingCarts.Any())
+{
+    <div class="d-flex flex-column align-items-center justify-content-center vh-100">
+        <h3 class="text-secondary">
+            Your cart is empty!<br />
+            Please add items.
+        </h3>
+        <a class="btn btn-primary mt-4" href="/">
+            Go to Products
+        </a>
+    </div>
+}
+else
+{
+    <div class="row w-100">
+        <div class="col-lg-6 col-12">
+            <div class="container p-4 m-2">
+                <h4 class="text-center text-success display-6">
+                    Cart Summary
+                </h4>
+                @foreach (var cartItem in ShoppingCarts)
+                {
+                    <div class="d-flex p-2 m-2">
+                        <div class="card flex-row w-100">
+                            <img class="card-img-left" style="width: 120px;" src="/images/product/@(cartItem.Product.ImageUrl ?? "default.png")">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h4 class="">
+                                        @cartItem.Product.Name
+                                    </h4>
+                                    <h4>
+                                        @cartItem.Product.Price.ToString("C", CultureInfo.GetCultureInfo("en-us"))
+                                    </h4>
+                                </div>
+                                <div class="flex-fill">
+                                    <h4 class="text-danger">
+                                        @((cartItem.Product.Price * cartItem.Quantity).ToString("C", CultureInfo.GetCultureInfo("en-us")))<!--COUNT*PRICE-->
+                                    </h4>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="d-flex justify-content-between g-0">
+                                        <span @onclick="() => UpdateCartItem(cartItem.ProductId, -1)">
+                                            <i class="bi bi-dash-circle-fill btn text-secondary"></i>
+                                        </span>
+                                        <span class="ml-1 me-1">
+                                            <b class="lead">@cartItem.Quantity<!--Count--></b>
+                                        </span>
+                                        <span @onclick="() => UpdateCartItem(cartItem.ProductId, 1)">
+                                            <i class="bi bi-plus-circle-fill btn text-secondary"></i>
+                                        </span>
+                                    </div>
+                                    <button class="btn btn-danger" @onclick="() => UpdateCartItem(cartItem.ProductId, -10000)">Remove</button><!--Decrement many to force delete item because will be <0 -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+        <div class="col-lg-6 col-12 p-4">
+            <div class="card">
+                <div class="card-header text-success text-center display-6">
+                    Pickup Details
+                </div>
+                <EditForm Model="OrderHeader" FormName="CartForm" OnValidSubmit="ProcessOrderCreation">
+                    <DataAnnotationsValidator />
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label>Name</label>
+                            <InputText @bind-Value="OrderHeader.Name" type="text" class="form-control" />
+                            <ValidationMessage For="@(() => OrderHeader.Name)" />
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <InputText @bind-Value="OrderHeader.Email" type="text" class="form-control" readonly />
+                            <ValidationMessage For="@(() => OrderHeader.Email)" />
+                        </div>
+                        <div class="form-group">
+                            <label>Phone</label>
+                            <InputText @bind-Value="OrderHeader.PhoneNumber" type="text" class="form-control" />
+                            <ValidationMessage For="@(() => OrderHeader.PhoneNumber)" />
+                        </div>
+                        <div class="card mt-4 bg-light">
+                            <div class="card-body">
+                                <h4>
+                                    Grand Total: @GrandTotal.ToString("C", CultureInfo.GetCultureInfo("en-us"))<!--$$-->
+                                </h4>
+                                <h4>
+                                    No. of Items: @TotalItems<!--COUNT-->
+                                </h4>
+                            </div>
 
-			<div class="d-flex p-2 m-2">
-				<div class="card flex-row w-100">
-					<img class="card-img-left" style="width: 120px;">
-					<div class="card-body">
-						<div class="d-flex justify-content-between align-items-center">
-							<h4 class="">
-								--ProductName--
-							</h4>
-							<h4>
-								--PRICE--
-							</h4>
-						</div>
-						<div class="flex-fill">
-							<h4 class="text-danger">
-								--COUNT*PRICE--
-							</h4>
-						</div>
-						<div class="d-flex justify-content-between align-items-center">
-							<div class="d-flex justify-content-between g-0">
-								<span>
-									<i class="bi bi-dash-circle-fill btn text-secondary"></i>
-								</span>
-								<span class="ml-1 me-1">
-									<b class="lead">--Count--</b>
-								</span>
-								<span>
-									<i class="bi bi-plus-circle-fill btn text-secondary"></i>
-								</span>
-							</div>
-							<button class="btn btn-danger">Remove</button>
-						</div>
-					</div>
-				</div>
-			</div>
+                        </div>
+                    </div>
 
-		</div>
-	</div>
-	<div class="col-lg-6 col-12 p-4">
-		<div class="card">
-			<div class="card-header text-success text-center display-6">
-				Pickup Details
-			</div>
-			<div class="card-body">
-				<form>
-					<div class="form-group">
-						<label>Name</label>
-						<input type="text" class="form-control" />
-					</div>
-					<div class="form-group">
-						<label>Email</label>
-						<input type="text" class="form-control" />
-					</div>
-					<div class="form-group">
-						<label>Phone</label>
-						<input type="text" class="form-control" />
-					</div>
+                    <button class="btn btn-success m-4">
+                        Looks Good? Place Order!
+                    </button>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
 
-				</form>
-				<div class="card mt-4 bg-light">
-					<div class="card-body">
-						<h4>
-							Grand Total: --$$--
-						</h4>
-						<h4>
-							No. of Items: --COUNT--
-						</h4>
-					</div>
+@code {
+    private IEnumerable<ShoppingCart> ShoppingCarts { get; set; } = new List<ShoppingCart>();
+    private bool IsProcessing { get; set; } = true;
 
-				</div>
-			</div>
+    [SupplyParameterFromForm]
+    public OrderHeader OrderHeader { get; set; } = new OrderHeader(); // OrderHeader to hold order details
+    private int TotalItems => ShoppingCarts.Sum(item => item.Quantity); // Calculate total items
+    private decimal GrandTotal => ShoppingCarts.Sum(item => item.Product.Price * item.Quantity); // Calculate grand total
 
-			<button class="btn btn-success m-4">
-				Looks Good? Place Order!
-			</button>
-		</div>
-	</div>
-</div>
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await _AuthStateProvider.GetAuthenticationStateAsync();//Get the current authentication state
+        var user = authState.User;//Get the user from the authentication state
+
+        if (user.Identity.IsAuthenticated)
+        {
+            OrderHeader.UserId = user.FindFirst(u => u.Type.Contains("nameidentifier"))?.Value;
+            //OrderHeader.Name = user.Identity.Name;
+            OrderHeader.Email = user.FindFirst(u => u.Type.Contains("email"))?.Value;
+            OrderHeader.OrderStatus = StaticDetails.StatusPending;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadCartAsync();
+            StateHasChanged(); // Trigger a re-render after loading products
+        }
+    }
+
+    private async Task LoadCartAsync()
+    {
+        IsProcessing = true;
+        try
+        {
+            ShoppingCarts = await _shoppingCartRepository.GetAllAsync(OrderHeader.UserId);
+        }
+        catch (Exception ex)
+        {
+            // Handle exceptions (e.g., log the error)
+            Console.Error.WriteLine($"Error loading products: {ex.Message}");
+        }
+        finally
+        {
+            IsProcessing = false;
+        }
+    }
+
+    private async Task UpdateCartItem(int productId, int updateBy)
+    {
+        IsProcessing = true;
+        try
+        {
+            await _shoppingCartRepository.UpdateCartAsync(OrderHeader.UserId, productId, updateBy);
+            await _shoppingCartRepository.TruncateIfEmptyAsync();
+            await LoadCartAsync();
+        }
+        catch (Exception ex)
+        {
+            // Handle exceptions (e.g., log the error)
+            Console.Error.WriteLine($"Error loading products: {ex.Message}");
+        }
+        finally
+        {
+            IsProcessing = false;
+        }
+    }
+
+    private async Task ProcessOrderCreation()
+    {
+        IsProcessing = true;
+        await Task.Yield(); // Ensure UI updates before processing
+
+        OrderHeader.OrderDetails = StaticDetails.ConvertShoppingCartToOrderDetails(ShoppingCarts.ToList());//Convert shopping cart items to order details
+
+        OrderHeader.OrderTotal = (double)GrandTotal;//Set the order total
+        
+        await _orderRepository.CreateAsync(OrderHeader);//Create the order
+        await _shoppingCartRepository.ClearCartAsync(OrderHeader.UserId);//Clear the shopping cart
+        await _shoppingCartRepository.TruncateIfEmptyAsync();
+
+        _navigationManager.NavigateTo($"/order/confirmation/{OrderHeader.Id}");//Navigate to order confirmation page
+    }
+}

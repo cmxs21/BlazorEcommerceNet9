@@ -65,5 +65,16 @@ namespace BlazorEcommerce.Repository
         {
             return await _db.SaveChangesAsync() > 0;
         }
+
+        public async Task<bool> TruncateIfEmptyAsync()
+        {
+            var any = await _db.ShoppingCarts.AnyAsync();
+            if (!any)
+            {
+                await _db.Database.ExecuteSqlRawAsync("TRUNCATE TABLE [ShoppingCarts]");
+                return true;
+            }
+            return false;
+        }
     }
 }
