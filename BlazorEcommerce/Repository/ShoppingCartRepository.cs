@@ -76,5 +76,12 @@ namespace BlazorEcommerce.Repository
             }
             return false;
         }
+
+        public async Task<int> GetCartCountAsync(string? userId)
+        {
+            return await _db.ShoppingCarts
+                .Where(u => u.UserId == userId)
+                .SumAsync(u => u.Quantity);
+        }
     }
 }

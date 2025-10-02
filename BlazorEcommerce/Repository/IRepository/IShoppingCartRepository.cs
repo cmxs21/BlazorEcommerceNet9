@@ -8,5 +8,6 @@ namespace BlazorEcommerce.Repository.IRepository
         public Task<IEnumerable<ShoppingCart>> GetAllAsync(string? userId);
         public Task<bool> ClearCartAsync(string? userId);
         public Task<bool> TruncateIfEmptyAsync();
+        public Task<int> GetCartCountAsync(string? userId);
     }
 }

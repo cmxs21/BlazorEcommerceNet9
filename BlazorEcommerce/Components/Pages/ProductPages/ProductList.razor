@@ -54,7 +54,7 @@ else
                                 <td>@product.Id</td>
                                 <td>@product.Name</td>
                                 <td>@product.Price.ToString("C", CultureInfo.GetCultureInfo("en-us"))</td>
-                                <td>@product.Description</td>
+                                <td>@((MarkupString)product.Description)</td>
                                 <td><span class="badge text-bg-info">@product.SpecialTag</span></td>
                                 <td>
                                     @if (!string.IsNullOrWhiteSpace(product.ImageUrl))

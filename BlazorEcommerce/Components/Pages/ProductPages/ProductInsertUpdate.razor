@@ -44,7 +44,20 @@ else
 
                 <div class="col-md-12">
                     <label for="description" class="form-label">Description</label>
-                    <InputTextArea id="description" class="form-control" @bind-Value="editModel.Description" />
+                    <!--InputTextArea id="description" class="form-control" @bind-Value="editModel.Description" /-->
+                    <RadzenHtmlEditor @bind-Value=@editModel.Description style="height: 300px;">
+                        <RadzenHtmlEditorUndo />
+                        <RadzenHtmlEditorRedo />
+                        <RadzenHtmlEditorSeparator />
+                        <RadzenHtmlEditorBold />
+                        <RadzenHtmlEditorItalic />
+                        <RadzenHtmlEditorUnderline />
+                        <RadzenHtmlEditorStrikeThrough />
+                        <RadzenHtmlEditorSeparator />
+                        <RadzenHtmlEditorColor />
+                        <RadzenHtmlEditorBackground />
+                        <RadzenHtmlEditorRemoveFormat />
+                    </RadzenHtmlEditor>
                     <ValidationMessage For="@(() => editModel.Description)" />
                 </div>
 

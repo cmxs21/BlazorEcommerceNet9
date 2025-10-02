@@ -28,7 +28,10 @@ namespace BlazorEcommerce.Repository
         }
         public async Task<OrderHeader> GetAsync(int id)
         {
-            return await _db.OrderHeaders.Include(oh => oh.OrderDetails).FirstOrDefaultAsync(oh => oh.Id == id);
+            return await _db.OrderHeaders
+                .Include(oh => oh.OrderDetails)
+                .ThenInclude(op => op.Product)
+                .FirstAsync(oh => oh.Id == id);
         }
         public async Task<OrderHeader> UpdateStatusAsync(int orderId, string status)
         {

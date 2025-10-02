@@ -1,0 +1,156 @@
+﻿@page "/order/list"
+@using BlazorEcommerce.Utility
+@using Microsoft.AspNetCore.Authorization
+@using System.Globalization
+@using System.Security.Claims
+@inject IOrderRepository _orderRepository
+@inject NavigationManager _navigationManager
+@attribute [Authorize]
+
+@if (IsProcessing)
+{
+    <div class="position-absolute w-100 vh-100 d-flex flex-column align-items-center bg-white justify-content-center">
+        <img src="/images/loading.gif" alt="loading" />
+    </div>
+}
+else
+{
+    <div class="card shadow border-0 m-4">
+        <div class="card-header bg-black bg-gradient ml-0 py-3">
+            <div class="row">
+                <div class="col-12 text-center">
+                    <h4 class="text-white py-2">Order List</h4>
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-4">
+            @if (OrderHeaders.Any())
+            {
+                <RadzenDataGrid AllowFiltering="true" AllowColumnResize="true" AllowAlternatingRows="false" FilterMode="FilterMode.Advanced" 
+                                AllowSorting="true" PageSize="20" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left" 
+                                ShowPagingSummary="true" Data="@OrderHeaders" ColumnWidth="300px" LogicalFilterOperator="LogicalFilterOperator.Or" 
+                                SelectionMode="DataGridSelectionMode.Single">
+                    <Columns>
+                        <RadzenDataGridColumn Property="Id" Filterable="true" Title="ID" Frozen="true" Width="80px" />
+                        <RadzenDataGridColumn Property="Name" Title="Name" Frozen="true" Width="120px" />
+                        <RadzenDataGridColumn Property="PhoneNumber" Title="Phone Number" Width="120px" TextAlign="TextAlign.Right" />
+                        <RadzenDataGridColumn Property="Email" Title="Email" Width="200px" />
+                        <RadzenDataGridColumn Property="OrderTotal" Title="Total" FormatString="{0:C}" Width="100px" TextAlign="TextAlign.Right" />
+                        <RadzenDataGridColumn Property="OrderDate" Title="Date" FormatString="{0:d}" Width="160px" TextAlign="TextAlign.Right" />
+                        <RadzenDataGridColumn Property="OrderStatus" Title="Status" FormatString="{0:d}" Width="160px" TextAlign="TextAlign.Right" />
+                        <RadzenDataGridColumn Title="Action" Sortable="false" Filterable="false" Width="80px" TextAlign="TextAlign.Center">
+                            <Template Context="OrderHeader">
+                                <RadzenButton Shade="Shade.Lighter" Text="Details" ButtonStyle="ButtonStyle.Primary" 
+                                    Click="@(() => _navigationManager.NavigateTo($"order/details/{OrderHeader.Id}"))"></RadzenButton>
+                            </Template>
+                        </RadzenDataGridColumn>
+                    </Columns>
+                </RadzenDataGrid>
+
+                <!--table class="table table-bordered table-striped">
+                    <thead class="bg-black bg-gradient text-white">
+                        <tr>
+                            <th>#</th>
+                            <th>Name</th>
+                            <th>Phone Number</th>
+                            <th>Email</th>
+                            <th>Total</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>&nbsp;</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @* @foreach (var orderHeader in OrderHeaders)
+                        {
+                            <tr>
+                                <td>@orderHeader.Id</td>
+                                <td>@orderHeader.Name</td>
+                                <td>@orderHeader.PhoneNumber</td>
+                                <td>@orderHeader.Email</td>
+                                <td>@orderHeader.OrderTotal.ToString("C", CultureInfo.GetCultureInfo("en-us"))</td>
+                                <td>@orderHeader.OrderDate</td>
+                                <td>@orderHeader.OrderStatus</td>
+                                <td>
+                                    <NavLink class="btn btn-sm btn-primary me-2" href=@($"order/details/{orderHeader.Id}")>
+                                        <i class="bi bi-pencil-square"></i> Details
+                                    </NavLink>
+                                </td>
+                            </tr>
+                        } *@
+                    </tbody>
+                </!--table-->
+            }
+            else
+            {
+                <div class="alert alert-info">
+                    No categories available.
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private bool IsProcessing { get; set; } = true;
+    private IEnumerable<OrderHeader> OrderHeaders { get; set; } = new List<OrderHeader>();
+
+    private bool? IsAdmin { get; set; } = null;
+    private string? UserId { get; set; } = null;
+
+    [CascadingParameter]
+    public Task<AuthenticationState> AuthState { get; set; }
+
+    //This method for loading data is not recommended because it can cause performance issues because of double rendering.
+    // protected override async Task OnInitializedAsync()
+    // {
+    //     IsProcessing = true;
+    //     //await LoadOrderHeaders();
+    //     IsProcessing = false;
+    // }
+
+    //Better method for loading data
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadOrderHeaders();
+            IsProcessing = false;
+            StateHasChanged(); // Trigger a re-render to show the loaded data
+        }
+    }
+
+    private async Task LoadOrderHeaders()
+    {
+        IsProcessing = true;
+        StateHasChanged();
+
+        await CheckAuthorization();
+
+        if (IsAdmin == false && UserId is not null)
+        {
+            OrderHeaders = await _orderRepository.GetAllAsync(UserId);
+            IsProcessing = false;
+            return;
+        }
+
+        OrderHeaders = await _orderRepository.GetAllAsync();
+        IsProcessing = false;
+    }
+
+    private async Task CheckAuthorization()
+    {
+        var authState = await AuthState;
+        var user = authState.User;
+        if (user.Identity is not null && user.Identity.IsAuthenticated)
+        {
+            IsAdmin = user?.IsInRole(StaticDetails.RoleAdmin);
+            UserId = user?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        }
+        else
+        {
+            IsAdmin = false;
+            UserId = null;
+        }
+    }
+}
