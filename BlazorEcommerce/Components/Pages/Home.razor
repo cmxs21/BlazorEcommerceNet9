@@ -1,10 +1,12 @@
 ﻿@page "/"
+@using BlazorEcommerce.Services
 @inject AuthenticationStateProvider _AuthStateProvider //Injected service to get the authentication state of the user
 @inject IJSRuntime _JS //Injected service to interact with JavaScript
 @inject NavigationManager _NavManager //Injected service to manage navigation
 @inject ICategoryRepository _categoryRepository // Injecting the category repository to fetch categories from the database
 @inject IProductRepository _productRepository // Injecting the product repository to fetch products from the database
 @inject IShoppingCartRepository _shoppingCartRepository // Injecting the shopping cart repository to manage shopping cart operations
+@inject SharedStateService _sharedStateService // Injecting SharedStateService to manage shared state across components
 
 <PageTitle>Home</PageTitle>
 
@@ -190,11 +192,13 @@ else
         if (user.Identity is not null && user.Identity.IsAuthenticated)
         {
             // User is authenticated, proceed to add the item to the cart
-            var result = await _shoppingCartRepository.UpdateCartAsync(user.FindFirst(u => u.Type.Contains("nameidentifier"))?.Value, product.Id, 1);
+            var userId = user.FindFirst(u => u.Type.Contains("nameidentifier"))?.Value;
+            var result = await _shoppingCartRepository.UpdateCartAsync(userId, product.Id, 1);
             
             if (result)
             {
                 // Optionally, you can update the UI or state here if needed
+                _sharedStateService.CartItemsCount = await _shoppingCartRepository.GetCartCountAsync(userId); // Update cart count in shared state
                 await _JS.ToastrSuccess("Item added to cart successfully!");
             } 
             else 

@@ -1,4 +1,9 @@
-﻿<nav class="navbar navbar-expand-md navbar-dark bg-dark pb-4 pt-4">
+﻿@using BlazorEcommerce.Services
+@inject AuthenticationStateProvider _authStateProvider // To access authentication state
+@inject SharedStateService _sharedStateService // To access shared state
+@inject IShoppingCartRepository _shoppingCartRepository // To access shopping cart data
+
+<nav class="navbar navbar-expand-md navbar-dark bg-dark pb-4 pt-4">
 	<div class="container-fluid">
 		<a class="navbar-brand" href="">
 			<img src="/images/Logo.png" alt="Bootstrap" width="30" height="24">
@@ -17,7 +22,7 @@
 				</li>
 				<li class="nav-item mx-2">
 					<NavLink class="nav-link" href="/cart">
-						<span class="bi bi-cart3" aria-hidden="true"></span> Cart
+                        <span class="bi bi-cart3" aria-hidden="true"></span> Cart (@_sharedStateService.CartItemsCount)
 					</NavLink>
 				</li>
 				<li class="nav-item mx-2">
@@ -61,3 +66,29 @@
 		</div>
 	</div>
 </nav>
+
+@code{
+	protected override void OnInitialized()
+	{
+        _sharedStateService.OnChange += OnSharedHasChanged;// Subscribe to state changes
+        _ = GetInitialCartCount(); // Fetch initial cart count asynchronously
+	}
+
+	private void OnSharedHasChanged()
+	{
+        InvokeAsync(StateHasChanged);// Ensure UI updates on the main thread
+    }
+
+	public async Task GetInitialCartCount()
+	{
+		var authState = await _authStateProvider.GetAuthenticationStateAsync();
+		var user = authState.User;
+
+        _sharedStateService.CartItemsCount = await _shoppingCartRepository.GetCartCountAsync(user?.FindFirst(u => u.Type.Contains("nameidentifier"))?.Value); // Fetch initial cart count
+    }
+
+    public void Dispose()
+	{
+		_sharedStateService.OnChange -= OnSharedHasChanged;// Unsubscribe to prevent memory leaks
+    }
+}
