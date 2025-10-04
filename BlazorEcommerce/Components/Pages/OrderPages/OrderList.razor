@@ -46,40 +46,6 @@ else
                         </RadzenDataGridColumn>
                     </Columns>
                 </RadzenDataGrid>
-
-                <!--table class="table table-bordered table-striped">
-                    <thead class="bg-black bg-gradient text-white">
-                        <tr>
-                            <th>#</th>
-                            <th>Name</th>
-                            <th>Phone Number</th>
-                            <th>Email</th>
-                            <th>Total</th>
-                            <th>Date</th>
-                            <th>Status</th>
-                            <th>&nbsp;</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @* @foreach (var orderHeader in OrderHeaders)
-                        {
-                            <tr>
-                                <td>@orderHeader.Id</td>
-                                <td>@orderHeader.Name</td>
-                                <td>@orderHeader.PhoneNumber</td>
-                                <td>@orderHeader.Email</td>
-                                <td>@orderHeader.OrderTotal.ToString("C", CultureInfo.GetCultureInfo("en-us"))</td>
-                                <td>@orderHeader.OrderDate</td>
-                                <td>@orderHeader.OrderStatus</td>
-                                <td>
-                                    <NavLink class="btn btn-sm btn-primary me-2" href=@($"order/details/{orderHeader.Id}")>
-                                        <i class="bi bi-pencil-square"></i> Details
-                                    </NavLink>
-                                </td>
-                            </tr>
-                        } *@
-                    </tbody>
-                </!--table-->
             }
             else
             {
