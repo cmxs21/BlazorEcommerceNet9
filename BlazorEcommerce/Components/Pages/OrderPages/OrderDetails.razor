@@ -66,9 +66,9 @@ else
                         )
                         {
                             <button class="btn btn-danger m-2 p-2" style="width:150px;" @onclick="() => UpdateStatus(StaticDetails.StatusCancelled)">
-                                Cancelled
+                                Cancell Order
                             </button>
-                            @if (OrderHeader?.OrderStatus == StaticDetails.StatusPending)
+                            @if (OrderHeader?.OrderStatus == StaticDetails.StatusPending || OrderHeader?.OrderStatus == StaticDetails.StatusApproved)
                             {
                                 <button class="btn btn-primary m-2 p-2" style="width:150px;" @onclick="() => UpdateStatus(StaticDetails.StatusReadyForPickUp)">
                                     Ready for Pickup
@@ -114,7 +114,7 @@ else
     {
         if (OrderHeader != null)
         {
-            await _orderRepository.UpdateStatusAsync(Id, newStatus);
+            await _orderRepository.UpdateStatusAsync(Id, newStatus, "");
             await _JS.ToastrSuccess("Status updated successfully to " + newStatus);
         }
     }

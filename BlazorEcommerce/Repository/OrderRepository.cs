@@ -11,6 +11,7 @@ namespace BlazorEcommerce.Repository
         {
             _db = db;
         }
+
         public async Task<OrderHeader> CreateAsync(OrderHeader orderHeader)
         {
             orderHeader.OrderDate = DateTime.Now;
@@ -18,6 +19,7 @@ namespace BlazorEcommerce.Repository
             await _db.SaveChangesAsync();
             return orderHeader;
         }
+
         public async Task<IEnumerable<OrderHeader>> GetAllAsync(string? userId = null)
         {
             if (userId == null)
@@ -26,6 +28,7 @@ namespace BlazorEcommerce.Repository
             }
             return await _db.OrderHeaders.Where(oh => oh.UserId == userId).ToListAsync();
         }
+
         public async Task<OrderHeader> GetAsync(int id)
         {
             return await _db.OrderHeaders
@@ -33,12 +36,22 @@ namespace BlazorEcommerce.Repository
                 .ThenInclude(op => op.Product)
                 .FirstAsync(oh => oh.Id == id);
         }
-        public async Task<OrderHeader> UpdateStatusAsync(int orderId, string status)
+
+        public async Task<OrderHeader> GetOrderBySessionIdAsync(string sessionId)
+        {
+            return await _db.OrderHeaders.FirstOrDefaultAsync(oh => oh.SessionId == sessionId.ToString());
+        }
+
+        public async Task<OrderHeader> UpdateStatusAsync(int orderId, string status, string paymentIntentId)
         {
             var orderHeader = await _db.OrderHeaders.FirstOrDefaultAsync(oh => oh.Id == orderId);
             if (orderHeader != null)
             {
                 orderHeader.OrderStatus = status;
+                if (!string.IsNullOrEmpty(paymentIntentId))
+                {
+                    orderHeader.PaymentIntentId = paymentIntentId;
+                }
                 await _db.SaveChangesAsync();
             }
             return orderHeader;

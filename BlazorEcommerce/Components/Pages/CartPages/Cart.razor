@@ -8,6 +8,7 @@
 @inject IOrderRepository _orderRepository // Injecting the order repository to manage order operations
 @inject NavigationManager _navigationManager // Injecting NavigationManager to handle navigation
 @inject SharedStateService _sharedStateService // Injecting SharedStateService to manage shared state across components
+@inject PaymentService _paymentService // Injecting PaymentService to handle payment-related operations
 @attribute [Authorize]
 
 <PageTitle>Shopping Cart</PageTitle>
@@ -201,11 +202,14 @@ else
         OrderHeader.OrderDetails = StaticDetails.ConvertShoppingCartToOrderDetails(ShoppingCarts.ToList());//Convert shopping cart items to order details
 
         OrderHeader.OrderTotal = (double)GrandTotal;//Set the order total
+
+        var session = _paymentService.CreateStripeCheckoutSession(OrderHeader);//Create a checkout session
+        OrderHeader.SessionId = session.Id;
         
         await _orderRepository.CreateAsync(OrderHeader);//Create the order
         await _shoppingCartRepository.ClearCartAsync(OrderHeader.UserId);//Clear the shopping cart
         await _shoppingCartRepository.TruncateIfEmptyAsync();
 
-        _navigationManager.NavigateTo($"/order/confirmation/{OrderHeader.Id}");//Navigate to order confirmation page
+        _navigationManager.NavigateTo(session.Url);//Navigate to order confirmation page
     }
 }

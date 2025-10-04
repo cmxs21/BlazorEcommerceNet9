@@ -1,4 +1,8 @@
-﻿@page "/order/confirmation/{orderId}"
+﻿@page "/order/confirmation/{session_id}"
+@using BlazorEcommerce.Services
+@using BlazorEcommerce.Utility
+@inject PaymentService _paymentService
+@inject IShoppingCartRepository _shoppingCartRepository
 
 @if (IsProcessing)
 {
@@ -14,7 +18,7 @@ else
         </h1>
         <h1 class="display-5">Thank you for your order!</h1>
         <p class="lead">
-            Your order has been successfully processed. Your order id is <strong>@orderId</strong>
+            Your order has been successfully processed. Your order id is <strong>@orderHeader.Id</strong>
         </p>
         <p>
             You will receive an email confirmation shortly.
@@ -31,12 +35,20 @@ else
 
 @code {
     [Parameter]
-    public string orderId { get; set; }
+    public string? session_id { get; set; }
 
     private bool IsProcessing = true;
+    private OrderHeader? orderHeader { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
+        orderHeader = await _paymentService.CheckPaymentStatusAndUpdateOrderAsync(session_id!);
+
+        if (orderHeader.OrderStatus == StaticDetails.StatusApproved)
+        {
+            await _shoppingCartRepository.ClearCartAsync(orderHeader.UserId);
+        }
+
         IsProcessing = false;
     }
 }
